@@ -7,31 +7,31 @@ using System.Threading;
 
 public class MapGenerator : MonoBehaviour
 {
-    public enum DrawMode { NoiseMap, ColourMap, Mesh, FalloffMap, BigMesh}; 
+    public enum DrawMode { NoiseMap, ColourMap, Mesh, FalloffMap, BigMesh, HugeMap}; 
     public DrawMode drawMode;
 
-    public enum NoiseMode { Simple, Diff, Land, Moutains, LandAndMountains, Erosion };
+    public enum NoiseMode { Simple, Diff, Land, Moutains, LandAndMountains};
     public NoiseMode noiseMode;
 
     public enum DrawValue { HeightMap, Gradient, Water, Sediment};
     public DrawValue drawvalue;
 
-
-
-    public Noise.NormalizeMode normalizeMode;
-
+    public bool autoUpdate;
+    public bool useFalloff;
+    public bool useErosion;
     [Range(0, 500)]
     public int erosionIterations;
 
+    public Noise.NormalizeMode normalizeMode;
+
+    
+
     public const int mapChunkSize = 239; //239
+    public int mapChunksBySide;
     [Range(0,6)]
     public int editorPreviewLOD;
     public float noiseScale;
 
-    [Range(0, 5)]
-    public float landWeight;
-    [Range(0, 5)]
-    public float mountainsWeight;
 
     public int mountainNoiseDivider;
 
@@ -48,12 +48,12 @@ public class MapGenerator : MonoBehaviour
     public int seed;
     public Vector2 offset;
 
-    public bool useFalloff;
+
 
     public float meshHeightMultiplier;
     public AnimationCurve meshHeightCurve;
 
-    public bool autoUpdate;
+    
 
     public TerrainType[] regions;
 
@@ -101,7 +101,7 @@ public class MapGenerator : MonoBehaviour
         {
             //display.DrawMesh(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, editorPreviewLOD), TextureGenerator.TextureFromColourMap(mapData.colourMap, mapChunkSize, mapChunkSize));
 
-            int indice = 0;
+            /*int indice = 0;
 
             for (int yOffset = -1; yOffset <= 1; yOffset++)
             {
@@ -116,15 +116,19 @@ public class MapGenerator : MonoBehaviour
                     display.DrawMeshByIndice(MeshGenerator.GenerateTerrainMesh(mapDataForBigMap.heightMap, meshHeightMultiplier, meshHeightCurve, editorPreviewLOD), TextureGenerator.TextureFromColourMap(mapDataForBigMap.colourMap, mapChunkSize, mapChunkSize), indice, position);
                     indice++;
                 }
-            }
+            }*/
 
 
 
         }
+        else if (drawMode == DrawMode.HugeMap)
+        {
+            display.DrawMHugeMap(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, editorPreviewLOD), TextureGenerator.TextureFromColourMap(mapData.colourMap, mapChunkSize, mapChunkSize), 0, new Vector2(0.0f, 0.0f),mapChunksBySide);
+        }
         else if (drawMode == DrawMode.FalloffMap)
         {
             //display.DrawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(mapChunkSize)));
-            display.DrawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(mapChunkSize*3)));
+            display.DrawTexture(TextureGenerator.TextureFromHeightMap(FalloffGenerator.GenerateFalloffMap(mapChunkSize * 3)));
         }
     }
 
@@ -194,10 +198,12 @@ public class MapGenerator : MonoBehaviour
     {
         float[,] noiseMap = GenerateNoiseMap(center);
 
-        Color[] colourMap = new Color[mapChunkSize * mapChunkSize];
-        for (int y = 0; y < mapChunkSize; y++)
+        int colorMapChunkSize = mapChunkSize +2;
+
+        Color[] colourMap = new Color[colorMapChunkSize * colorMapChunkSize];
+        for (int y = 0; y < colorMapChunkSize; y++)
         {
-            for (int x = 0; x < mapChunkSize; x++)
+            for (int x = 0; x < colorMapChunkSize; x++)
             {
                 if (useFalloff)
                 {
@@ -241,11 +247,8 @@ public class MapGenerator : MonoBehaviour
         float maxLocalNoiseHeight = float.MinValue;
         float minLocalNoiseHeight = float.MaxValue;
 
-        if (noiseMode == NoiseMode.Erosion)
-        {
-            noiseMap = Erosion.GenerateErodedMap(mapChunkSize + 2, mapChunkSize + 2, noiseMap, erosionIterations, drawvalue, gradientMapParent);
-        }
-        else if(noiseMode == NoiseMode.Diff)
+        
+        if(noiseMode == NoiseMode.Diff)
         {
             float[,] noiseMap1 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
             float[,] noiseMap2 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 1, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
@@ -382,175 +385,191 @@ public class MapGenerator : MonoBehaviour
 
         else if (noiseMode == NoiseMode.LandAndMountains)
         {
-            float[,] noiseMap1 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap2 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 1, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap3 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 2, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap4 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 3, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+            noiseMap = generateLandAndMountains(center, noiseMap, ref maxLocalNoiseHeight, ref minLocalNoiseHeight);
+        }
 
-            float[,] noiseMap5 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 4, noiseScale / mountainNoiseDivider, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap6 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 5, noiseScale / mountainNoiseDivider, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap7 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 6, noiseScale / mountainNoiseDivider, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap8 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 7, noiseScale / mountainNoiseDivider, octaves, persistance, lacunarity, center + offset, normalizeMode);
-
-            float[,] landNoiseMap = new float[mapChunkSize + 2, mapChunkSize + 2];
-            float[,] moutainsNoiseMap = new float[mapChunkSize + 2, mapChunkSize + 2];
-
-            for (int y = 0; y < mapChunkSize + 2; y++)
-            {
-                for (int x = 0; x < mapChunkSize + 2; x++)
-                {
-                    float diff1 = Math.Abs(noiseMap1[x, y] - noiseMap2[x, y]);
-                    float diff2 = Math.Abs(noiseMap3[x, y] - noiseMap4[x, y]);
-                    //float noiseHeight = Math.Abs(diff1 - diff2);
-                    float noiseHeight = diff1;
-
-                    if (noiseHeight > maxLocalNoiseHeight)
-                    {
-                        maxLocalNoiseHeight = noiseHeight;
-                    }
-                    else if (noiseHeight < minLocalNoiseHeight)
-                    {
-                        minLocalNoiseHeight = noiseHeight;
-                    }
-
-                    landNoiseMap[x, y] = noiseHeight;
-                }
-            }
-
-            Debug.Log("Ld min " + minLocalNoiseHeight + " Ld max " + maxLocalNoiseHeight);
-
-            for (int y = 0; y < mapChunkSize + 2; y++)
-            {
-                for (int x = 0; x < mapChunkSize + 2; x++)
-                {
-                    
-
-                    if (normalizeMode == Noise.NormalizeMode.Global)
-                    {
-                        landNoiseMap[x, y] = Mathf.InverseLerp(0, maxPossibleHeightForLand, landNoiseMap[x, y]);
-                    }
-                    else
-                    {
-                        landNoiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, landNoiseMap[x, y]);
-                    }
-
-                }
-            }
-
-            maxLocalNoiseHeight = float.MinValue;
-            minLocalNoiseHeight = float.MaxValue;
-
-
-            for (int y = 0; y < mapChunkSize + 2; y++)
-            {
-                for (int x = 0; x < mapChunkSize + 2; x++)
-                {
-                    float diff1 = Math.Abs(noiseMap5[x, y] - noiseMap6[x, y]);
-                    float diff2 = Math.Abs(noiseMap7[x, y] - noiseMap8[x, y]);
-                    float noiseHeight = Math.Abs(diff1 + diff2);
-
-                    if (noiseHeight > maxLocalNoiseHeight)
-                    {
-                        maxLocalNoiseHeight = noiseHeight;
-                    }
-                    else if (noiseHeight < minLocalNoiseHeight)
-                    {
-                        minLocalNoiseHeight = noiseHeight;
-                    }
-
-                    moutainsNoiseMap[x, y] = noiseHeight;
-                }
-            }
-
-            Debug.Log("Mt min " + minLocalNoiseHeight + " Mt max " + maxLocalNoiseHeight);
-
-            for (int y = 0; y < mapChunkSize + 2; y++)
-            {
-                for (int x = 0; x < mapChunkSize + 2; x++)
-                {
-                    //moutainsNoiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, moutainsNoiseMap[x, y]);
-                    //moutainsNoiseMap[x, y] = 1 - moutainsNoiseMap[x, y];
-
-                    if (normalizeMode == Noise.NormalizeMode.Global)
-                    {
-                        moutainsNoiseMap[x, y] = Mathf.InverseLerp(0, maxPossibleHeightFotMountains, moutainsNoiseMap[x, y]);
-                        moutainsNoiseMap[x, y] = 1 - moutainsNoiseMap[x, y];
-                    }
-                    else
-                    {
-                        moutainsNoiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, moutainsNoiseMap[x, y]);
-                        moutainsNoiseMap[x, y] = 1 - moutainsNoiseMap[x, y];
-                    }
-
-                }
-            }
-
-            maxLocalNoiseHeight = float.MinValue;
-            minLocalNoiseHeight = float.MaxValue;
-
-            for (int y = 0; y < mapChunkSize + 2; y++)
-            {
-                for (int x = 0; x < mapChunkSize + 2; x++)
-                {
-                    float noiseHeight;
-
-                    //noiseHeight = landNoiseMap[x, y] * moutainsNoiseMap[x, y];
-
-                    /*if (landNoiseMap[x, y] < mountainLevel)
-                    {
-                        noiseHeight = landWeight * landNoiseMap[x, y];
-                    }
-                    else// if (moutainsNoiseMap[x, y] > landNoiseMap[x, y]) 
-                    {
-                        noiseHeight = landWeight * landNoiseMap[x, y] + mountainsWeight * moutainsNoiseMap[x, y];
-                    }*/
-
-                    /*if(moutainsNoiseMap[x, y] > landNoiseMap[x, y] && landNoiseMap[x, y] > waterLevel)
-                    {
-                        noiseHeight = mountainsWeight * moutainsNoiseMap[x, y];
-                    }
-                    else
-                    {
-                        noiseHeight = landWeight * landNoiseMap[x, y];
-                    }*/
-
-                    noiseHeight = moutainsNoiseMap[x, y] - (1 - landNoiseMap[x, y]);
-
-                    if (noiseHeight > maxLocalNoiseHeight)
-                    {
-                        maxLocalNoiseHeight = noiseHeight;
-                    }
-                    else if (noiseHeight < minLocalNoiseHeight)
-                    {
-                        minLocalNoiseHeight = noiseHeight;
-                    }
-
-                    noiseMap[x, y] = noiseHeight;
-                }
-            }
-
-            Debug.Log("All min " + minLocalNoiseHeight + " All max " + maxLocalNoiseHeight);
-
-            for (int y = 0; y < mapChunkSize + 2; y++)
-            {
-                for (int x = 0; x < mapChunkSize + 2; x++)
-                {
-                    if (normalizeMode == Noise.NormalizeMode.Local)
-                    {
-                        noiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseMap[x, y]);
-                    }
-                    else
-                    {
-                        noiseMap[x, y] = Mathf.InverseLerp(0, maxPossibleHeightFotMountains, noiseMap[x, y]);
-                        //float normalizedHeight = (noiseMap[x, y] + 1) / (maxPossibleHeight);
-                        //noiseMap[x, y] = Mathf.Clamp(normalizedHeight, 0, int.MaxValue);
-                    }
-
-                }
-            }
+        if (useErosion)
+        {
+            noiseMap = Erosion.GenerateErodedMap(mapChunkSize + 2, mapChunkSize + 2, noiseMap, erosionIterations, drawvalue, gradientMapParent, waterLevel);
         }
 
         return noiseMap;
+    }
+
+    private float[,] generateLandAndMountains(Vector2 center, float[,] noiseMap, ref float maxLocalNoiseHeight, ref float minLocalNoiseHeight)
+    {
+        float[,] noiseMapResult = new float[mapChunkSize + 2, mapChunkSize + 2];
+
+        float[,] noiseMap1 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap2 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 1, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap3 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 2, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap4 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 3, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+
+        float[,] noiseMap5 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 4, noiseScale / mountainNoiseDivider, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap6 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 5, noiseScale / mountainNoiseDivider, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap7 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 6, noiseScale / mountainNoiseDivider, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap8 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 7, noiseScale / mountainNoiseDivider, octaves, persistance, lacunarity, center + offset, normalizeMode);
+
+        float[,] landNoiseMap = new float[mapChunkSize + 2, mapChunkSize + 2];
+        float[,] moutainsNoiseMap = new float[mapChunkSize + 2, mapChunkSize + 2];
+
+        for (int y = 0; y < mapChunkSize + 2; y++)
+        {
+            for (int x = 0; x < mapChunkSize + 2; x++)
+            {
+                float diff1 = Math.Abs(noiseMap1[x, y] - noiseMap2[x, y]);
+                float diff2 = Math.Abs(noiseMap3[x, y] - noiseMap4[x, y]);
+                //float noiseHeight = Math.Abs(diff1 - diff2);
+                float noiseHeight = diff1;
+
+                if (noiseHeight > maxLocalNoiseHeight)
+                {
+                    maxLocalNoiseHeight = noiseHeight;
+                }
+                else if (noiseHeight < minLocalNoiseHeight)
+                {
+                    minLocalNoiseHeight = noiseHeight;
+                }
+
+                landNoiseMap[x, y] = noiseHeight;
+            }
+        }
+
+        Debug.Log("Ld min " + minLocalNoiseHeight + " Ld max " + maxLocalNoiseHeight);
+
+        for (int y = 0; y < mapChunkSize + 2; y++)
+        {
+            for (int x = 0; x < mapChunkSize + 2; x++)
+            {
+
+
+                if (normalizeMode == Noise.NormalizeMode.Global)
+                {
+                    landNoiseMap[x, y] = Mathf.InverseLerp(0, maxPossibleHeightForLand, landNoiseMap[x, y]);
+                }
+                else
+                {
+                    landNoiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, landNoiseMap[x, y]);
+                }
+
+            }
+        }
+
+        maxLocalNoiseHeight = float.MinValue;
+        minLocalNoiseHeight = float.MaxValue;
+
+
+        for (int y = 0; y < mapChunkSize + 2; y++)
+        {
+            for (int x = 0; x < mapChunkSize + 2; x++)
+            {
+                float diff1 = Math.Abs(noiseMap5[x, y] - noiseMap6[x, y]);
+                float diff2 = Math.Abs(noiseMap7[x, y] - noiseMap8[x, y]);
+                float noiseHeight = Math.Abs(diff1 + diff2);
+
+                if (noiseHeight > maxLocalNoiseHeight)
+                {
+                    maxLocalNoiseHeight = noiseHeight;
+                }
+                else if (noiseHeight < minLocalNoiseHeight)
+                {
+                    minLocalNoiseHeight = noiseHeight;
+                }
+
+                moutainsNoiseMap[x, y] = noiseHeight;
+            }
+        }
+
+        Debug.Log("Mt min " + minLocalNoiseHeight + " Mt max " + maxLocalNoiseHeight);
+
+        for (int y = 0; y < mapChunkSize + 2; y++)
+        {
+            for (int x = 0; x < mapChunkSize + 2; x++)
+            {
+                //moutainsNoiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, moutainsNoiseMap[x, y]);
+                //moutainsNoiseMap[x, y] = 1 - moutainsNoiseMap[x, y];
+
+                if (normalizeMode == Noise.NormalizeMode.Global)
+                {
+                    moutainsNoiseMap[x, y] = Mathf.InverseLerp(0, maxPossibleHeightFotMountains, moutainsNoiseMap[x, y]);
+                    moutainsNoiseMap[x, y] = 1 - moutainsNoiseMap[x, y];
+                }
+                else
+                {
+                    moutainsNoiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, moutainsNoiseMap[x, y]);
+                    moutainsNoiseMap[x, y] = 1 - moutainsNoiseMap[x, y];
+                }
+
+            }
+        }
+
+        maxLocalNoiseHeight = float.MinValue;
+        minLocalNoiseHeight = float.MaxValue;
+
+        for (int y = 0; y < mapChunkSize + 2; y++)
+        {
+            for (int x = 0; x < mapChunkSize + 2; x++)
+            {
+                float noiseHeight;
+
+                //noiseHeight = landNoiseMap[x, y] * moutainsNoiseMap[x, y];
+
+                /*if (landNoiseMap[x, y] < mountainLevel)
+                {
+                    noiseHeight = landWeight * landNoiseMap[x, y];
+                }
+                else// if (moutainsNoiseMap[x, y] > landNoiseMap[x, y]) 
+                {
+                    noiseHeight = landWeight * landNoiseMap[x, y] + mountainsWeight * moutainsNoiseMap[x, y];
+                }*/
+
+                /*if(moutainsNoiseMap[x, y] > landNoiseMap[x, y] && landNoiseMap[x, y] > waterLevel)
+                {
+                    noiseHeight = mountainsWeight * moutainsNoiseMap[x, y];
+                }
+                else
+                {
+                    noiseHeight = landWeight * landNoiseMap[x, y];
+                }*/
+
+                noiseHeight = moutainsNoiseMap[x, y] - (1 - landNoiseMap[x, y]);
+
+                if (noiseHeight > maxLocalNoiseHeight)
+                {
+                    maxLocalNoiseHeight = noiseHeight;
+                }
+                else if (noiseHeight < minLocalNoiseHeight)
+                {
+                    minLocalNoiseHeight = noiseHeight;
+                }
+
+                noiseMapResult[x, y] = noiseHeight;
+            }
+
+            
+        }
+
+        Debug.Log("All min " + minLocalNoiseHeight + " All max " + maxLocalNoiseHeight);
+
+        for (int y = 0; y < mapChunkSize + 2; y++)
+        {
+            for (int x = 0; x < mapChunkSize + 2; x++)
+            {
+                if (normalizeMode == Noise.NormalizeMode.Local)
+                {
+                    noiseMapResult[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseMapResult[x, y]);
+                }
+                else
+                {
+                    noiseMapResult[x, y] = Mathf.InverseLerp(0, maxPossibleHeightFotMountains, noiseMapResult[x, y]);
+                    //float normalizedHeight = (noiseMap[x, y] + 1) / (maxPossibleHeight);
+                    //noiseMap[x, y] = Mathf.Clamp(normalizedHeight, 0, int.MaxValue);
+                }
+
+            }
+        }
+
+        return noiseMapResult;
     }
 
     MapData GenerateBigMapData(Vector2 center, Vector2 chunkCoord)

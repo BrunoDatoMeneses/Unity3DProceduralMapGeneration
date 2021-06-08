@@ -368,26 +368,28 @@ public class Erosion : MonoBehaviour
             for (int dy = -1; dy < 2; dy++)
             {
                 double[,] wy = new double[mapSize, mapSize];
+                double[,] wProductWIthA = new double[mapSize, mapSize];
+                double[,] rollDyAxis0 = new double[mapSize, mapSize];
+
                 for (int x = 0; x < mapSize; x++)
                 {
                     for (int y = 0; y < mapSize; y++)
                     {
                         wy[x, y] = maxDouble(Fns(dy, (double)delta[x, y].Imaginary), 0.0f);
-
+                        wProductWIthA[x, y] = wx[x, y] * wy[x, y] * a[x, y];
                     }
                 }
 
                 PrintTabDouble(wy, "sediment wy " + dx + " " + dy, 0, mapSize);
 
-                double[,] wProductWIthA = new double[mapSize, mapSize];
-                double[,] rollDyAxis0 = new double[mapSize, mapSize];
-                for (int x = 0; x < mapSize; x++)
+                
+                /*for (int x = 0; x < mapSize; x++)
                 {
                     for (int y = 0; y < mapSize; y++)
                     {
-                        wProductWIthA[x, y] =wx[x,y] * wy[x,y] * a[x,y];
+                        wProductWIthA[x, y] = wx[x, y] * wy[x, y] * a[x, y];
                     }
-                }
+                }*/
                 PrintTabDouble(wProductWIthA, "wProductWIthA " + dx + " " + dy, 0, mapSize);
 
 
@@ -542,7 +544,7 @@ public class Erosion : MonoBehaviour
         return (a < b) ? a : b;
     }
 
-    public static float[,] GenerateErodedMap(int mapWidth, int mapHeight, float[,] noiseMap, int iterations_, MapGenerator.DrawValue drawvalue, GameObject gradientMapParent)
+    public static float[,] GenerateErodedMap(int mapWidth, int mapHeight, float[,] noiseMap, int iterations_, MapGenerator.DrawValue drawvalue, GameObject gradientMapParent, double waterLevel)
     {
 
         cell_width = (double)((double)full_width / (double)mapWidth);
@@ -554,15 +556,6 @@ public class Erosion : MonoBehaviour
         int mapSize = mapWidth;
         //`terrain` represents the actual terrain height we're interested in
         double[,] terrainTest = new double[mapWidth, mapHeight];
-        for (int y = 0; y < mapSize; y++)
-        {
-            for (int x = 0; x < mapSize; x++)
-            {
-                terrainTest[x, y] = noiseMap[x, y];
-            }
-        }
-
-        PrintTabDouble(terrainTest, "terrainTest first", 10, mapSize);
 
         //PrintTabFlt(terrainTest, "terrainTest");
         // `sediment` is the amount of suspended "dirt" in the water. Terrain will be
@@ -575,23 +568,20 @@ public class Erosion : MonoBehaviour
         // The water velocity.
         double[,] velocity = new double[mapSize, mapSize];
 
+        double min = double.MaxValue;
+        double max = double.MinValue;
+        double sum = 0.0f;
+
         for (int y = 0; y < mapSize; y++)
         {
             for (int x = 0; x < mapSize; x++)
             {
+                terrainTest[x, y] = noiseMap[x, y];
+
                 sediment[x, y] = 0.0d;
                 water[x, y] = 0.0d;
                 velocity[x, y] = 0.0d;
-            }
-        }
 
-        double min = double.MaxValue;
-        double max = double.MinValue;
-        double sum = 0.0f;
-        for (int x = 0; x < mapSize; x++)
-        {
-            for (int y = 0; y < mapSize; y++)
-            {
                 resultdMap[x, y] = (float)terrainTest[x, y];
                 min = minDouble(min, resultdMap[x, y]);
                 max = maxDouble(max, resultdMap[x, y]);
@@ -601,6 +591,32 @@ public class Erosion : MonoBehaviour
         Debug.Log(min);
         Debug.Log(max);
         Debug.Log(sum);
+
+        PrintTabDouble(terrainTest, "terrainTest first", 10, mapSize);
+
+
+        /*for (int y = 0; y < mapSize; y++)
+        {
+            for (int x = 0; x < mapSize; x++)
+            {
+                sediment[x, y] = 0.0d;
+                water[x, y] = 0.0d;
+                velocity[x, y] = 0.0d;
+            }
+        }*/
+
+
+        /*for (int x = 0; x < mapSize; x++)
+        {
+            for (int y = 0; y < mapSize; y++)
+            {
+                resultdMap[x, y] = (float)terrainTest[x, y];
+                min = minDouble(min, resultdMap[x, y]);
+                max = maxDouble(max, resultdMap[x, y]);
+                sum += resultdMap[x, y];
+            }
+        }*/
+        
 
         for (int i = 0; i < iterations_; i++) 
         {
@@ -614,11 +630,11 @@ public class Erosion : MonoBehaviour
                     // Add precipitation. This is done by via simple uniform random distribution,
                     // although other models use a raindrop model
                     water[x, y] += Random.Range(0.0f, 1.0f) * rain_rate;
+                    
                     /*if ((x + y) % 2 == 0) {
-                        water[x,y] += rain_rate;
+                        water[x,y] += rain_rate; // single source
                     }*/
           
-                    //water[x, y] *= rain_rate;
                 }
             }
 
@@ -635,27 +651,6 @@ public class Erosion : MonoBehaviour
             //# `gradient`.
             double[,] neighbor_height = sampleCplx(terrainTest, cGradient, mapSize);
             double[,] height_delta = new double[mapSize, mapSize];
-            for (int x = 0; x < mapSize; x++)
-            {
-                for (int y = 0; y < mapSize; y++)
-                {
-                    height_delta[x, y] = terrainTest[x, y] - neighbor_height[x, y];
-                }
-            }
-
-            PrintTabDouble(neighbor_height, "neighbor_height", 10, mapSize);
-            PrintTabDouble(height_delta, "height_delta", 10, mapSize);
-
-            // Update velocity TODO plus loin
-            /*for (int x = 0; x < mapSize; x++)
-            {
-                for (int y = 0; y < mapSize; y++)
-                {
-                    velocity[x, y] = gravity * height_delta[x, y] / cell_width;
-                }
-            }*/
-
-            PrintTabDouble(velocity, "velocity", 0, mapSize);
 
             /*# The sediment capacity represents how much sediment can be suspended in
             # water. If the sediment exceeds the quantity, then it is deposited,
@@ -663,7 +658,49 @@ public class Erosion : MonoBehaviour
 
             double[,] sediment_capacity = new double[mapSize, mapSize];
             double[,] deposited_sediment = new double[mapSize, mapSize];
+
             for (int x = 0; x < mapSize; x++)
+            {
+                for (int y = 0; y < mapSize; y++)
+                {
+                    height_delta[x, y] = terrainTest[x, y] - neighbor_height[x, y];
+
+                    sediment_capacity[x, y] = (maxDouble(height_delta[x, y], min_height_delta) / (double)cell_width) * (double)velocity[x, y] * water[x, y] * sediment_capacity_constant;
+
+
+                    if (height_delta[x, y] < 0)
+                    {
+                        deposited_sediment[x, y] = minDouble(height_delta[x, y], sediment[x, y]);
+                    }
+                    else if (sediment[x, y] > sediment_capacity[x, y])
+                    {
+                        deposited_sediment[x, y] = deposition_rate * (sediment[x, y] - sediment_capacity[x, y]);
+                    }
+                    else //If sediment <= sediment_capacity
+                    {
+                        deposited_sediment[x, y] = dissolving_rate * (sediment[x, y] - sediment_capacity[x, y]);
+                    }
+
+                    //Don't erode more sediment than the current terrain height.
+                    deposited_sediment[x, y] = maxDouble(-height_delta[x, y], deposited_sediment[x, y]);
+
+
+
+                    sediment[x, y] -= deposited_sediment[x, y];
+                    if (terrainTest[x, y] > waterLevel)
+                    {
+                        terrainTest[x, y] += deposited_sediment[x, y];
+                    }
+                    
+                }
+            }
+
+            PrintTabDouble(neighbor_height, "neighbor_height", 10, mapSize);
+            PrintTabDouble(height_delta, "height_delta", 10, mapSize);
+            PrintTabDouble(velocity, "velocity", 0, mapSize);
+
+            
+            /*for (int x = 0; x < mapSize; x++)
             {
                 for (int y = 0; y < mapSize; y++)
                 {
@@ -690,33 +727,12 @@ public class Erosion : MonoBehaviour
 
                     sediment[x, y] -= deposited_sediment[x, y];
                     terrainTest[x, y] += deposited_sediment[x, y];
-                    /*if(deposited_sediment[x, y]>0 && terrainTest[x, y] < 0.4)
-                    {
-                        terrainTest[x, y] += 0.0d;
-                    }
-                    else if (deposited_sediment[x, y] < 0 && terrainTest[x, y] > 0.9)
-                    {
-                        terrainTest[x, y] += 0.0d;
-                    }
-                    else
-                    {
-                        terrainTest[x, y] += deposited_sediment[x, y];
-                    }*/
-                    /*if (deposited_sediment[x, y] < 0 && terrainTest[x, y] > 0.4)
-                    {
-                        terrainTest[x, y] += deposited_sediment[x, y];
-                    }*/
-                    
 
-                    //Debug.Log("["+x+","+y+"] sediment " + sediment[x, y]);
-                    //Debug.Log("[" + x + "," + y + "] deposited_sediment " + deposited_sediment[x, y]);
-                    //Debug.Log("[" + x + "," + y + "] water " + water[x, y]);
-                    //Debug.Log("[" + x + "," + y + "] velocity " + velocity[x, y]);
 
 
 
                 }
-            }
+            }*/
 
             
 
@@ -731,8 +747,6 @@ public class Erosion : MonoBehaviour
             PrintTabDouble(water, "waterbefore", 0, mapSize);
 
             sediment = Displace(sediment, cGradient, mapSize,"sediment");
-            
-
             water = Displace(water, cGradient, mapSize, "water");
             
             PrintTabDouble(sediment, "sedimentafter", 0, mapSize);
@@ -1060,44 +1074,12 @@ public class Erosion : MonoBehaviour
     public static double[,] sampleCplx(double[,] a,Complex[,] offset, int mapSize)
     {
         Complex[,] delta = new Complex[mapSize, mapSize];
-        for (int x = 0; x < mapSize; x++)
-        {
-            for (int y = 0; y < mapSize; y++)
-            {
-                delta[x, y] = -offset[x, y];
-            }
-        }
-        PrintTabComplex(delta, "-gradient",0,mapSize);
 
         double[,] mesggridDy = new double[mapSize, mapSize];
         double[,] mesggridDx = new double[mapSize, mapSize];
 
-        for (int x = 0; x < mapSize; x++)
-        {
-            for (int y = 0; y < mapSize; y++)
-            {
-                mesggridDy[x, y] = y;
-                mesggridDx[x, y] = x;
-            }
-        }
-
-        PrintTabDouble(mesggridDy, "mesggridDy", 0, mapSize);
-        PrintTabDouble(mesggridDx, "mesggridDx", 0, mapSize);
-
         double[,] coordsDy = new double[mapSize, mapSize];
         double[,] coordsDx = new double[mapSize, mapSize];
-
-        for (int x = 0; x < mapSize; x++)
-        {
-            for (int y = 0; y < mapSize; y++)
-            {
-                coordsDy[x, y] = mesggridDy[x, y] - (double)delta[x, y].Real;
-                coordsDx[x, y] = mesggridDx[x, y] - (double)delta[x, y].Imaginary;
-            }
-        }
-
-        PrintTabDouble(coordsDy, "coordsDy", 0, mapSize);
-        PrintTabDouble(coordsDx, "coordsDx", 0, mapSize);
 
         int[,] lowerCoordsDy = new int[mapSize, mapSize];
         int[,] lowerCoordsDx = new int[mapSize, mapSize];
@@ -1111,7 +1093,79 @@ public class Erosion : MonoBehaviour
         int[,] upperCoordsDyMod = new int[mapSize, mapSize];
         int[,] upperCoordsDxMod = new int[mapSize, mapSize];
 
+        double[,] result = new double[mapSize, mapSize];
+
         for (int x = 0; x < mapSize; x++)
+        {
+            for (int y = 0; y < mapSize; y++)
+            {
+                delta[x, y] = -offset[x, y];
+
+                mesggridDy[x, y] = y;
+                mesggridDx[x, y] = x;
+
+                coordsDy[x, y] = mesggridDy[x, y] - (double)delta[x, y].Real;
+                coordsDx[x, y] = mesggridDx[x, y] - (double)delta[x, y].Imaginary;
+
+                lowerCoordsDy[x, y] = Mathf.FloorToInt((float)coordsDy[x, y]);
+                lowerCoordsDx[x, y] = Mathf.FloorToInt((float)coordsDx[x, y]);
+                upperCoordsDy[x, y] = lowerCoordsDy[x, y] + 1;
+                upperCoordsDx[x, y] = lowerCoordsDx[x, y] + 1;
+                coord_offsetsDy[x, y] = coordsDy[x, y] - (double)lowerCoordsDy[x, y];
+                coord_offsetsDx[x, y] = coordsDx[x, y] - (double)lowerCoordsDx[x, y];
+
+                lowerCoordsDyMod[x, y] = lowerCoordsDy[x, y] % mapSize;
+                lowerCoordsDxMod[x, y] = lowerCoordsDx[x, y] % mapSize;
+                upperCoordsDyMod[x, y] = upperCoordsDy[x, y] % mapSize;
+                upperCoordsDxMod[x, y] = upperCoordsDx[x, y] % mapSize;
+
+                lowerCoordsDyMod[x, y] = (lowerCoordsDyMod[x, y] < 0) ? lowerCoordsDyMod[x, y] + mapSize : lowerCoordsDyMod[x, y];
+                lowerCoordsDxMod[x, y] = (lowerCoordsDxMod[x, y] < 0) ? lowerCoordsDxMod[x, y] + mapSize : lowerCoordsDxMod[x, y];
+                upperCoordsDyMod[x, y] = (upperCoordsDyMod[x, y] < 0) ? upperCoordsDyMod[x, y] + mapSize : upperCoordsDyMod[x, y];
+                upperCoordsDxMod[x, y] = (upperCoordsDxMod[x, y] < 0) ? upperCoordsDxMod[x, y] + mapSize : upperCoordsDxMod[x, y];
+
+                result[x, y] = lerp(lerp(a[lowerCoordsDxMod[x, y], lowerCoordsDyMod[x, y]],
+                     a[lowerCoordsDxMod[x, y], upperCoordsDyMod[x, y]],
+                     coord_offsetsDy[x, y]),
+                lerp(a[upperCoordsDxMod[x, y], lowerCoordsDyMod[x, y]],
+                     a[upperCoordsDxMod[x, y], upperCoordsDyMod[x, y]],
+                     coord_offsetsDy[x, y]),
+                coord_offsetsDx[x, y]);
+            }
+        }
+        PrintTabComplex(delta, "-gradient",0,mapSize);
+
+        
+
+        /*for (int x = 0; x < mapSize; x++)
+        {
+            for (int y = 0; y < mapSize; y++)
+            {
+                mesggridDy[x, y] = y;
+                mesggridDx[x, y] = x;
+            }
+        }*/
+
+        PrintTabDouble(mesggridDy, "mesggridDy", 0, mapSize);
+        PrintTabDouble(mesggridDx, "mesggridDx", 0, mapSize);
+
+        
+
+        /*for (int x = 0; x < mapSize; x++)
+        {
+            for (int y = 0; y < mapSize; y++)
+            {
+                coordsDy[x, y] = mesggridDy[x, y] - (double)delta[x, y].Real;
+                coordsDx[x, y] = mesggridDx[x, y] - (double)delta[x, y].Imaginary;
+            }
+        }*/
+
+        PrintTabDouble(coordsDy, "coordsDy", 0, mapSize);
+        PrintTabDouble(coordsDx, "coordsDx", 0, mapSize);
+
+        
+
+        /*for (int x = 0; x < mapSize; x++)
         {
             for (int y = 0; y < mapSize; y++)
             {
@@ -1133,7 +1187,7 @@ public class Erosion : MonoBehaviour
                 upperCoordsDxMod[x, y] = (upperCoordsDxMod[x, y] < 0) ? upperCoordsDxMod[x, y] + mapSize : upperCoordsDxMod[x, y];
 
             }
-        }
+        }*/
 
 
         PrintTabInt(lowerCoordsDy, "lowerCoordsDy");
@@ -1150,8 +1204,8 @@ public class Erosion : MonoBehaviour
         PrintTabInt(upperCoordsDxMod, "upperCoordsDxMod");
 
 
-        double[,] result = new double[mapSize, mapSize];
-        for (int x = 0; x < mapSize; x++)
+        
+        /*for (int x = 0; x < mapSize; x++)
         {
             for (int y = 0; y < mapSize; y++)
             {
@@ -1165,7 +1219,7 @@ public class Erosion : MonoBehaviour
                      coord_offsetsDy[x, y]),
                 coord_offsetsDx[x, y]);
             }
-        }
+        }*/
 
         PrintTabDouble(result, "result", 0, mapSize);
 
