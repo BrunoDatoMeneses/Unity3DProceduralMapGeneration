@@ -24,9 +24,11 @@ public class MapGenerator : MonoBehaviour
 
     public Noise.NormalizeMode normalizeMode;
 
-    
 
+    public const int chunkSizeMax = 241;
     public const int mapChunkSize = 239; //239
+
+    public int hugeMapSize;
     public int mapChunksBySide;
     [Range(0,6)]
     public int editorPreviewLOD;
@@ -75,12 +77,23 @@ public class MapGenerator : MonoBehaviour
     private void Awake()
     {
         falloffMap = FalloffGenerator.GenerateFalloffMap(mapChunkSize+2);
-        falloffBigMap = FalloffGenerator.GenerateFalloffMap((mapChunkSize+2)*3);
+        falloffBigMap = FalloffGenerator.GenerateFalloffMap(chunkSizeMax * mapChunksBySide);
     }
 
     public void DrawMapInEditor()
     {
-        MapData mapData = GenerateMapData(Vector2.zero);
+        MapData mapData;
+        if (drawMode == DrawMode.HugeMap)
+        {
+            hugeMapSize = chunkSizeMax * mapChunksBySide;
+            mapData = GenerateHugeMapData(Vector2.zero, hugeMapSize);
+        }
+        else
+        {
+            mapData = GenerateMapData(Vector2.zero);
+        }
+
+        
         
 
 
@@ -123,7 +136,15 @@ public class MapGenerator : MonoBehaviour
         }
         else if (drawMode == DrawMode.HugeMap)
         {
-            display.DrawMHugeMap(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, editorPreviewLOD), TextureGenerator.TextureFromColourMap(mapData.colourMap, mapChunkSize, mapChunkSize), 0, new Vector2(0.0f, 0.0f),mapChunksBySide);
+
+            //display.DrawMHugeMap(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, editorPreviewLOD), TextureGenerator.TextureFromHeightMap(mapData.heightMap), 0, new Vector2(0.0f, 0.0f),mapChunksBySide);
+            display.DrawMHugeMap(null, 
+                TextureGenerator.TextureFromHeightMap(mapData.heightMap), 
+                TextureGenerator.TextureFromColourMap(mapData.colourMap, mapChunkSize, mapChunkSize), 
+                0, 
+                new Vector2(0.0f, 0.0f), 
+                mapChunksBySide);
+
         }
         else if (drawMode == DrawMode.FalloffMap)
         {
@@ -230,6 +251,42 @@ public class MapGenerator : MonoBehaviour
 
     }
 
+    MapData GenerateHugeMapData(Vector2 center, int hugeMapSize)
+    {
+        float[,] noiseMap = GenerateNoiseMap(center);
+
+        int colorMapChunkSize = hugeMapSize;
+
+        Color[] colourMap = new Color[colorMapChunkSize * colorMapChunkSize];
+        for (int y = 0; y < colorMapChunkSize; y++)
+        {
+            for (int x = 0; x < colorMapChunkSize; x++)
+            {
+                if (useFalloff)
+                {
+                    noiseMap[x, y] = Mathf.Clamp01(noiseMap[x, y] - falloffMap[x, y]);
+                }
+
+                float currentHeight = noiseMap[x, y];
+                for (int i = 0; i < regions.Length; i++)
+                {
+                    if (currentHeight >= regions[i].height)
+                    {
+                        colourMap[y * hugeMapSize + x] = regions[i].colour;
+
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+
+        return new MapData(noiseMap, colourMap);
+
+    }
+
     private float[,] GenerateNoiseMap(Vector2 center)
     {
         float[,] noiseMap = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
@@ -250,78 +307,11 @@ public class MapGenerator : MonoBehaviour
         
         if(noiseMode == NoiseMode.Diff)
         {
-            float[,] noiseMap1 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap2 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 1, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            for (int y = 0; y < mapChunkSize + 2; y++)
-            {
-                for (int x = 0; x < mapChunkSize + 2; x++)
-                {
-                    noiseMap[x, y] = Math.Abs(noiseMap1[x, y] - noiseMap2[x, y]);
-
-                    if (normalizeMode == Noise.NormalizeMode.Global)
-                    {
-                        noiseMap[x, y] = Mathf.InverseLerp(0, maxPossibleHeightForLand, noiseMap[x, y]);
-                    }
-                }
-            }
+            noiseMap = generateNoiseDiff(center, mapChunkSize + 2);
         }
         else if (noiseMode == NoiseMode.Land)
         {
-            float[,] noiseMap1 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap2 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 1, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap3 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 2, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap4 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 3, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-
-            float[,] noiseMap5 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 4, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap6 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 5, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap7 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 6, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-            float[,] noiseMap8 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 7, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
-
-            for (int y = 0; y < mapChunkSize + 2; y++)
-            {
-                for (int x = 0; x < mapChunkSize + 2; x++)
-                {
-                    float diff1 = Math.Abs(noiseMap1[x, y] - noiseMap2[x, y]);
-                    float diff2 = Math.Abs(noiseMap3[x, y] - noiseMap4[x, y]);
-                    float diff3 = (noiseMap5[x, y] - noiseMap6[x, y]);
-                    float diff4 = (noiseMap7[x, y] - noiseMap8[x, y]);
-                    //float noiseHeight = Math.Abs(diff1 - diff2) ;
-                    float noiseHeight = diff1;
-
-                    if (noiseHeight > maxLocalNoiseHeight)
-                    {
-                        maxLocalNoiseHeight = noiseHeight;
-                    }
-                    else if (noiseHeight < minLocalNoiseHeight)
-                    {
-                        minLocalNoiseHeight = noiseHeight;
-                    }
-
-                    noiseMap[x, y] = noiseHeight;
-                }
-            }
-
-            Debug.Log("Land min " + minLocalNoiseHeight + " Land max " + maxLocalNoiseHeight);
-
-            for (int y = 0; y < mapChunkSize + 2; y++)
-            {
-                for (int x = 0; x < mapChunkSize + 2; x++)
-                {
-                    //noiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseMap[x, y]);
-
-                    if (normalizeMode == Noise.NormalizeMode.Local)
-                    {
-                        noiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseMap[x, y]);
-                    }
-                    else
-                    {
-                        noiseMap[x, y] = Mathf.InverseLerp(0, maxPossibleHeightForLand, noiseMap[x, y]);
-                        //float normalizedHeight = (noiseMap[x, y] + 1) / (maxPossibleHeight);
-                        //noiseMap[x, y] = Mathf.Clamp(normalizedHeight, 0, int.MaxValue);
-                    }
-
-                }
-            }
+            noiseMap = generateNoiseLand(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight);
         }
 
         else if (noiseMode == NoiseMode.Moutains)
@@ -394,6 +384,94 @@ public class MapGenerator : MonoBehaviour
         }
 
         return noiseMap;
+    }
+
+    private float[,] generateNoiseLand(Vector2 center, ref float maxLocalNoiseHeight, ref float minLocalNoiseHeight)
+    {
+        float[,] noiseMap;
+        float[,] noiseLand = new float[mapChunkSize + 2, mapChunkSize + 2];
+
+        float[,] noiseMap1 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap2 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 1, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap3 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 2, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap4 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 3, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+
+        float[,] noiseMap5 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 4, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap6 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 5, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap7 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 6, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap8 = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, seed + 7, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+
+        for (int y = 0; y < mapChunkSize + 2; y++)
+        {
+            for (int x = 0; x < mapChunkSize + 2; x++)
+            {
+                float diff1 = Math.Abs(noiseMap1[x, y] - noiseMap2[x, y]);
+                float diff2 = Math.Abs(noiseMap3[x, y] - noiseMap4[x, y]);
+                float diff3 = (noiseMap5[x, y] - noiseMap6[x, y]);
+                float diff4 = (noiseMap7[x, y] - noiseMap8[x, y]);
+                //float noiseHeight = Math.Abs(diff1 - diff2) ;
+                float noiseHeight = diff1;
+
+                if (noiseHeight > maxLocalNoiseHeight)
+                {
+                    maxLocalNoiseHeight = noiseHeight;
+                }
+                else if (noiseHeight < minLocalNoiseHeight)
+                {
+                    minLocalNoiseHeight = noiseHeight;
+                }
+
+                noiseLand[x, y] = noiseHeight;
+            }
+        }
+
+        Debug.Log("Land min " + minLocalNoiseHeight + " Land max " + maxLocalNoiseHeight);
+
+        for (int y = 0; y < mapChunkSize + 2; y++)
+        {
+            for (int x = 0; x < mapChunkSize + 2; x++)
+            {
+                //noiseMap[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseMap[x, y]);
+
+                if (normalizeMode == Noise.NormalizeMode.Local)
+                {
+                    noiseLand[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseLand[x, y]);
+                }
+                else
+                {
+                    noiseLand[x, y] = Mathf.InverseLerp(0, maxPossibleHeightForLand, noiseLand[x, y]);
+                    //float normalizedHeight = (noiseMap[x, y] + 1) / (maxPossibleHeight);
+                    //noiseMap[x, y] = Mathf.Clamp(normalizedHeight, 0, int.MaxValue);
+                }
+
+            }
+        }
+
+        noiseMap = noiseLand;
+        return noiseMap;
+    }
+
+    private float[,] generateNoiseDiff(Vector2 center, int size)
+    {
+        float[,] noiseDiff = new float[size, size];
+
+        float[,] noiseMap1 = Noise.GenerateNoiseMap(size, size, seed, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        float[,] noiseMap2 = Noise.GenerateNoiseMap(size, size, seed + 1, noiseScale, octaves, persistance, lacunarity, center + offset, normalizeMode);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                noiseDiff[x, y] = Math.Abs(noiseMap1[x, y] - noiseMap2[x, y]);
+
+                if (normalizeMode == Noise.NormalizeMode.Global)
+                {
+                    noiseDiff[x, y] = Mathf.InverseLerp(0, maxPossibleHeightForLand, noiseDiff[x, y]);
+                }
+            }
+        }
+
+ 
+        return noiseDiff;
     }
 
     private float[,] generateLandAndMountains(Vector2 center, float[,] noiseMap, ref float maxLocalNoiseHeight, ref float minLocalNoiseHeight)
@@ -623,9 +701,9 @@ public class MapGenerator : MonoBehaviour
         }
 
         falloffMap = FalloffGenerator.GenerateFalloffMap(mapChunkSize + 2);
-        falloffBigMap = FalloffGenerator.GenerateFalloffMap((mapChunkSize + 2) * 3);
+        falloffBigMap = FalloffGenerator.GenerateFalloffMap(chunkSizeMax * mapChunksBySide);
 
-        
+
     }
 
 
