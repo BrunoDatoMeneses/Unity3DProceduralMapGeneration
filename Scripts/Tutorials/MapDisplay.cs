@@ -129,7 +129,7 @@ public class MapDisplay : MonoBehaviour
                 hugeMapMeshes[i, j].AddComponent<MeshCollider>();
                 hugeMapMeshes[i, j].GetComponent<MeshCollider>().sharedMesh = hugeMapMeshes[i, j].GetComponent<MeshFilter>().mesh;
 
-                float offset = (meshTexture.width-3) * 10.0f;
+                float offset = (subMapData.heightMap.GetLength(0) -3) * 10.0f;
                 hugeMapMeshes[i, j].transform.localScale = new Vector3(10.0f, 10.0f, 10.0f);
                 hugeMapMeshes[i, j].transform.position = new Vector3(i * offset, 0.0f, -j * offset);
             }
@@ -148,12 +148,14 @@ public class MapDisplay : MonoBehaviour
     {
         float[,] subHeighMap = new float[subSize, subSize];
         Color[] subColourMap = new Color[subSize * subSize];
+        int modSubSize = (subSize - 3);
         for (int y = 0; y < subSize; y++)
         {
             for (int x = 0; x < subSize; x++)
             {
-                subHeighMap[x, y] = mapData.heightMap[(subSize*i) + x, (subSize * j) + y];
-                subColourMap[y * subSize + x] = mapData.colourMap[(y+(subSize * j) ) * hugeMapSize + (x + (subSize * i))];
+                
+                subHeighMap[x, y] = mapData.heightMap[(modSubSize * i) + x, (modSubSize * j) + y ];
+                subColourMap[y * subSize + x] = mapData.colourMap[(y+(modSubSize * j) ) * hugeMapSize + (x + (modSubSize * i))];
 
             }
         }

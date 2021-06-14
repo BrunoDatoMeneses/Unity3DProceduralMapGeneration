@@ -93,7 +93,7 @@ public class MapGenerator : MonoBehaviour
         if (drawMode == DrawMode.HugeMap)
         {
              
-            hugeMapSize = chunkSizeMax * nbMapChunksBySide;
+            hugeMapSize = (chunkSizeMax-3) * nbMapChunksBySide +4;
             meshHeightMultiplier = hugeMapSize / 8.0f;
             falloffugeMap = FalloffGenerator.GenerateFalloffMap(hugeMapSize);
             mapData = GenerateHugeMapData(Vector2.zero, hugeMapSize);
@@ -123,7 +123,7 @@ public class MapGenerator : MonoBehaviour
             display.DrawHugeColourTexture(TextureGenerator.TextureFromColourMap(mapData.colourMap, hugeMapSize, hugeMapSize));
 
             
-            int subSize = mapChunkSize + 2;
+            int subSize = chunkSizeMax;
 
             display.DrawHugeMapMeshes(mapData, nbMapChunksBySide, subSize, hugeMapSize);
 
@@ -171,6 +171,7 @@ public class MapGenerator : MonoBehaviour
     void MapDataThread(Vector2 center, Action<MapData> callback)
     {
         MapData mapData = GenerateMapData(center, mapChunkSize + 2);
+        Debug.Log("mapData Chunk " + (mapChunkSize + 2));
         lock (mapDataThreadInfoQueue)
         {
             mapDataThreadInfoQueue.Enqueue(new MapThreadInfo<MapData>(callback, mapData));
@@ -190,6 +191,7 @@ public class MapGenerator : MonoBehaviour
 
     void MeshDataThread(MapData mapData, int lod, Action<MeshData> callback)
     {
+        Debug.Log("Heigh map before mesh " + mapData.heightMap.GetLength(0));
         MeshData meshData = MeshGenerator.GenerateTerrainMesh(mapData.heightMap, meshHeightMultiplier, meshHeightCurve, lod);
         lock (meshDataThreadInfoQueue)
         {
