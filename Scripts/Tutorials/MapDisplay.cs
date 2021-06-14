@@ -83,7 +83,86 @@ public class MapDisplay : MonoBehaviour
         hugeFallOffMapTextureRenderer.transform.localScale = new Vector3(texture.width, 1, texture.height);
     }
 
-    public void DrawHugeMapMeshes(MeshData meshData, Texture2D texture, int nbChunkBySize)
+    public void DrawHugeMapMeshes(MapData mapData, int nbChunkBySize, int subSize, int hugeMapSize)
+    {
+        MapGenerator mapGenerator = FindObjectOfType<MapGenerator>();
+
+        if (hugeMapMeshes!=null)
+        {
+            for (int j = 0; j < hugeMapMeshes.GetLength(0); j++)
+            {
+                for (int i = 0; i < hugeMapMeshes.GetLength(1); i++)
+                {
+                    GameObject.Destroy(hugeMapMeshes[i, j]);
+                }
+            }
+        }
+        
+
+        hugeMapMeshes = new GameObject[nbChunkBySize, nbChunkBySize];
+
+
+        for (int j = 0; j < nbChunkBySize; j++)
+        {
+            for (int i = 0; i < nbChunkBySize; i++)
+            {
+                
+
+                MapData subMapData = getSubMapData(mapData, subSize, hugeMapSize, i, j);
+
+                MeshData meshData = MeshGenerator.GenerateTerrainMesh(subMapData.heightMap, mapGenerator.meshHeightMultiplier, mapGenerator.meshHeightCurve, mapGenerator.editorPreviewLOD);
+                Texture2D meshTexture = TextureGenerator.TextureFromColourMap(subMapData.colourMap, subSize, subSize);
+
+                hugeMapMeshes[i, j] = new GameObject();
+                hugeMapMeshes[i, j].name = "" + i + j;
+                //hugeMapMeshes[i, j].AddComponent<Transform>();
+                hugeMapMeshes[i, j].transform.parent = hugeMapParent.transform;
+                
+
+                hugeMapMeshes[i, j].AddComponent<MeshFilter>();
+                hugeMapMeshes[i, j].AddComponent<MeshRenderer>();
+                hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material = matMaterial;
+
+                hugeMapMeshes[i, j].GetComponent<MeshFilter>().mesh = meshData.CreateMesh();
+                hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material.mainTexture = meshTexture;
+
+                hugeMapMeshes[i, j].AddComponent<MeshCollider>();
+                hugeMapMeshes[i, j].GetComponent<MeshCollider>().sharedMesh = hugeMapMeshes[i, j].GetComponent<MeshFilter>().mesh;
+
+                float offset = (meshTexture.width-3) * 10.0f;
+                hugeMapMeshes[i, j].transform.localScale = new Vector3(10.0f, 10.0f, 10.0f);
+                hugeMapMeshes[i, j].transform.position = new Vector3(i * offset, 0.0f, -j * offset);
+            }
+
+
+        }
+
+        
+
+
+
+
+    }
+
+    private static MapData getSubMapData(MapData mapData, int subSize, int hugeMapSize, int i, int j)
+    {
+        float[,] subHeighMap = new float[subSize, subSize];
+        Color[] subColourMap = new Color[subSize * subSize];
+        for (int y = 0; y < subSize; y++)
+        {
+            for (int x = 0; x < subSize; x++)
+            {
+                subHeighMap[x, y] = mapData.heightMap[(subSize*i) + x, (subSize * j) + y];
+                subColourMap[y * subSize + x] = mapData.colourMap[(y+(subSize * j) ) * hugeMapSize + (x + (subSize * i))];
+
+            }
+        }
+
+        MapData subMapData = new MapData(subHeighMap, subColourMap);
+        return subMapData;
+    }
+
+    public void DrawHugeMapMeshesOld(MeshData meshData, Texture2D texture, int nbChunkBySize)
     {
 
 

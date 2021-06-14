@@ -6,7 +6,7 @@ public static class Noise
 {
     public enum NormalizeMode { Local, Global}
 
-    public static float[,] GenerateNoiseMap(int mapWidth, int mapHeight, int seed, float scale, int octaves, float persistance, float lacunarity, Vector2 offset, NormalizeMode normalizeMode)
+    public static float[,] GenerateNoiseMap(int mapWidth, int mapHeight, int seed, float scale, int octaves, float persistance, float lacunarity, Vector2 offset, NormalizeMode normalizeMode, int worldScale)
     {
         float[,] noiseMap = new float[mapWidth, mapHeight];
 
@@ -35,8 +35,12 @@ public static class Noise
         float maxLocalNoiseHeight = float.MinValue;
         float minLocalNoiseHeight = float.MaxValue;
 
-        float halfWidth = mapWidth / 2f;
-        float halfHeight = mapHeight / 2f;
+        //float halfWidth = mapWidth / 2f;
+        //float halfHeight = mapHeight / 2f;
+
+
+        float halfWidth = worldScale / 2f;
+        float halfHeight = worldScale / 2f;
 
         for (int y = 0; y < mapHeight; y++)
         {
