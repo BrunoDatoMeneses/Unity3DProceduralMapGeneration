@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class MapDisplay : MonoBehaviour
 {
-    public Material matMaterial;
+    
 
     public Renderer singleNoiseMapTextureRenderer;
     public Renderer singleColourMapTextureRenderer;
@@ -44,10 +44,12 @@ public class MapDisplay : MonoBehaviour
         fallOffMapTextureRenderer.transform.localScale = new Vector3(texture.width, 1, texture.height);
     }
 
-    public void DrawMesh(MeshData meshData, Texture2D texture)
+    public void DrawMesh(MeshData meshData)
     {
-        singleMeshFilter.mesh = meshData.CreateMesh();
-        singleMeshRenderer.material.mainTexture = texture;
+        singleMeshFilter.sharedMesh = meshData.CreateMesh();
+
+        singleMeshFilter.transform.localScale = Vector3.one * FindObjectOfType<MapGenerator>().terrainData.uniformScale;
+        //singleMeshRenderer.material = matMaterial;
     }
 
     public void DrawMeshByIndice(MeshData meshData, Texture2D texture, int indice, Vector2 position)
@@ -110,8 +112,8 @@ public class MapDisplay : MonoBehaviour
 
                 MapData subMapData = getSubMapData(mapData, subSize, hugeMapSize, i, j);
 
-                MeshData meshData = MeshGenerator.GenerateTerrainMesh(subMapData.heightMap, mapGenerator.meshHeightMultiplier, mapGenerator.meshHeightCurve, mapGenerator.editorPreviewLOD);
-                Texture2D meshTexture = TextureGenerator.TextureFromColourMap(subMapData.colourMap, subSize, subSize);
+                MeshData meshData = MeshGenerator.GenerateTerrainMesh(subMapData.heightMap, mapGenerator.terrainData.meshHeightMultiplier, mapGenerator.terrainData.meshHeightCurve, mapGenerator.editorPreviewLOD);
+                //Texture2D meshTexture = TextureGenerator.TextureFromColourMap(subMapData.colourMap, subSize, subSize);
 
                 hugeMapMeshes[i, j] = new GameObject();
                 hugeMapMeshes[i, j].name = "" + i + j;
@@ -121,10 +123,10 @@ public class MapDisplay : MonoBehaviour
 
                 hugeMapMeshes[i, j].AddComponent<MeshFilter>();
                 hugeMapMeshes[i, j].AddComponent<MeshRenderer>();
-                hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material = matMaterial;
+                //hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material = matMaterial;
 
                 hugeMapMeshes[i, j].GetComponent<MeshFilter>().mesh = meshData.CreateMesh();
-                hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material.mainTexture = meshTexture;
+                //hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material.mainTexture = meshTexture;
 
                 hugeMapMeshes[i, j].AddComponent<MeshCollider>();
                 hugeMapMeshes[i, j].GetComponent<MeshCollider>().sharedMesh = hugeMapMeshes[i, j].GetComponent<MeshFilter>().mesh;
@@ -155,12 +157,12 @@ public class MapDisplay : MonoBehaviour
             {
                 
                 subHeighMap[x, y] = mapData.heightMap[(modSubSize * i) + x, (modSubSize * j) + y ];
-                subColourMap[y * subSize + x] = mapData.colourMap[(y+(modSubSize * j) ) * hugeMapSize + (x + (modSubSize * i))];
+                //subColourMap[y * subSize + x] = mapData.colourMap[(y+(modSubSize * j) ) * hugeMapSize + (x + (modSubSize * i))];
 
             }
         }
 
-        MapData subMapData = new MapData(subHeighMap, subColourMap);
+        MapData subMapData = new MapData(subHeighMap);
         return subMapData;
     }
 
@@ -183,7 +185,7 @@ public class MapDisplay : MonoBehaviour
                 hugeMapMeshes[i, j].transform.parent = hugeMapParent.transform;
                 hugeMapMeshes[i, j].AddComponent<MeshFilter>();
                 hugeMapMeshes[i, j].AddComponent<MeshRenderer>();
-                hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material = matMaterial;
+                //hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material = matMaterial;
                 
                 hugeMapMeshes[i, j].GetComponent<MeshFilter>().mesh = meshData.CreateMesh();
                 hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material.mainTexture = texture;
