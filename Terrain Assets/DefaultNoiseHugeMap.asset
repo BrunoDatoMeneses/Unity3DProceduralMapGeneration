@@ -10,12 +10,12 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bb6fe2c8075b7ba48a2dacbf5ce9f203, type: 3}
-  m_Name: DefaultNoise
+  m_Name: DefaultNoiseHugeMap
   m_EditorClassIdentifier: 
   autoUpdate: 0
-  noiseMode: 4
+  noiseMode: 3
   normalizeMode: 0
-  noiseScale: 1000
+  noiseScale: 10000
   octaves: 6
   persistance: 0.471
   lacunarity: 2

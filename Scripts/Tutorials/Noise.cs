@@ -35,12 +35,12 @@ public static class Noise
         float maxLocalNoiseHeight = float.MinValue;
         float minLocalNoiseHeight = float.MaxValue;
 
-        float halfWidth = mapWidth / 2f;
-        float halfHeight = mapHeight / 2f;
+        //float halfWidth = mapWidth / 2f;
+        //float halfHeight = mapHeight / 2f;
 
 
-        //float halfWidth = worldScale / 2f;
-        //float halfHeight = worldScale / 2f;
+        float halfWidth = worldScale / 2f;
+        float halfHeight = worldScale / 2f;
 
         for (int y = 0; y < mapHeight; y++)
         {

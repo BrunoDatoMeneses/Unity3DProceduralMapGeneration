@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 using System.Threading;
-
+using static NoiseData;
 
 public class MapGenerator : MonoBehaviour
 {
@@ -12,16 +12,19 @@ public class MapGenerator : MonoBehaviour
     public enum DrawMode { SingleMap, HugeMap}; 
     public DrawMode drawMode;
 
-    public enum NoiseMode { Simple, Diff, Land, Moutains, LandAndMountains};
-    public NoiseMode noiseMode;
+    
 
     public enum DrawValue { HeightMap, Gradient, Water, Sediment};
     public DrawValue drawvalue;
 
 
     public TerrainData terrainData;
-    public NoiseData noiseData;
+    public NoiseData noiseDataDefault;
     public TextureData textureData;
+
+    public TerrainData terrainDataHugeMap;
+    public NoiseData noiseDataHugeMap;
+    public TextureData textureDataHugeMap;
 
     public Material terrainMaterial;
 
@@ -101,22 +104,22 @@ public class MapGenerator : MonoBehaviour
             hugeMapSize = (chunkSizeMax-3) * nbMapChunksBySide +4;
             terrainData.meshHeightMultiplier = hugeMapSize / 8.0f;
             falloffugeMap = FalloffGenerator.GenerateFalloffMap(hugeMapSize);
-            mapData = GenerateHugeMapData(Vector2.zero, hugeMapSize);
+            mapData = GenerateHugeMapData(Vector2.zero, hugeMapSize, noiseDataHugeMap);
             
         }
         else
         {
-            //terrainData.meshHeightMultiplier = mapChunkSize / 8.0f;
+            terrainData.meshHeightMultiplier = mapChunkSize / 8.0f;
             falloffMap = FalloffGenerator.GenerateFalloffMap(mapChunkSize + 2);
-            mapData = GenerateMapData(Vector2.zero, mapChunkSize +2);
+            mapData = GenerateMapData(Vector2.zero, mapChunkSize +2, noiseDataDefault);
         }
 
 
         MapDisplay display = FindObjectOfType<MapDisplay>();
         if (drawMode == DrawMode.SingleMap)
         {
-            //display.DrawFallOffTexture(TextureGenerator.TextureFromHeightMap(falloffMap));
-            //display.DrawHeightTexture(TextureGenerator.TextureFromHeightMap(mapData.heightMap));
+            display.DrawFallOffTexture(TextureGenerator.TextureFromHeightMap(falloffMap));
+            display.DrawHeightTexture(TextureGenerator.TextureFromHeightMap(mapData.heightMap));
             //display.DrawColourTexture(TextureGenerator.TextureFromColourMap(mapData.colourMap, mapChunkSize, mapChunkSize));
             display.DrawMesh(MeshGenerator.GenerateTerrainMesh(mapData.heightMap, terrainData.meshHeightMultiplier, terrainData.meshHeightCurve, editorPreviewLOD));
 
@@ -175,7 +178,7 @@ public class MapGenerator : MonoBehaviour
 
     void MapDataThread(Vector2 center, Action<MapData> callback)
     {
-        MapData mapData = GenerateMapData(center, mapChunkSize + 2);
+        MapData mapData = GenerateMapData(center, mapChunkSize + 2, noiseDataDefault);
         Debug.Log("mapData Chunk " + (mapChunkSize + 2));
         lock (mapDataThreadInfoQueue)
         {
@@ -226,9 +229,9 @@ public class MapGenerator : MonoBehaviour
     }
 
 
-    MapData GenerateMapData(Vector2 center, int size)
+    MapData GenerateMapData(Vector2 center, int size, NoiseData noiseData)
     {
-        float[,] noiseMap = GenerateNoiseMap(center, size);
+        float[,] noiseMap = GenerateNoiseMap(center, size, noiseData);
 
         int colorMapChunkSize = size;
 
@@ -246,16 +249,16 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
-        Debug.Log("MINNNNNNNNNNNNNNNNNNNN " + terrainData.minHeight + " " + terrainData.maxHeight);
+        //Debug.Log("MINNNNNNNNNNNNNNNNNNNN " + terrainData.minHeight + " " + terrainData.maxHeight);
         textureData.UpdateMeshHeights(terrainMaterial, terrainData.minHeight, terrainData.maxHeight);
 
         return new MapData(noiseMap);
 
     }
 
-    MapData GenerateHugeMapData(Vector2 center, int hugeMapSize)
+    MapData GenerateHugeMapData(Vector2 center, int hugeMapSize, NoiseData noiseData)
     {
-        float[,] noiseMap = GenerateNoiseMap(center, hugeMapSize);
+        float[,] noiseMap = GenerateNoiseMap(center, hugeMapSize, noiseData);
 
         int colorMapChunkSize = hugeMapSize;
 
@@ -272,14 +275,14 @@ public class MapGenerator : MonoBehaviour
             }
         }
 
+        textureData.UpdateMeshHeights(terrainMaterial, terrainData.minHeight, terrainData.maxHeight);
 
-        
 
         return new MapData(noiseMap);
 
     }
 
-    private float[,] GenerateNoiseMap(Vector2 center, int size)
+    private float[,] GenerateNoiseMap(Vector2 center, int size, NoiseData noiseData)
     {
         float[,] noiseMap = Noise.GenerateNoiseMap(size, size, noiseData.seed, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
 
@@ -297,22 +300,22 @@ public class MapGenerator : MonoBehaviour
         float minLocalNoiseHeight = float.MaxValue;
 
         
-        if(noiseMode == NoiseMode.Diff)
+        if(noiseData.noiseMode == NoiseMode.Diff)
         {
-            noiseMap = generateNoiseDiff(center, size);
+            noiseMap = generateNoiseDiff(center, size, noiseData);
         }
-        else if (noiseMode == NoiseMode.Land)
+        else if (noiseData.noiseMode == NoiseMode.Land)
         {
-            noiseMap = generateNoiseLand(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size);
+            noiseMap = generateNoiseLand(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size, noiseData);
         }
 
-        else if (noiseMode == NoiseMode.Moutains)
+        else if (noiseData.noiseMode == NoiseMode.Mountains)
         {
-            noiseMap = generateNoiseMountains(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size);
+            noiseMap = generateNoiseMountains(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size, noiseData);
         }
-        else if (noiseMode == NoiseMode.LandAndMountains)
+        else if (noiseData.noiseMode == NoiseMode.LandAndMountains)
         {
-            noiseMap = generateLandAndMountains(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size);
+            noiseMap = generateLandAndMountains(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size, noiseData);
         }
 
         if (terrainData.useErosion)
@@ -325,7 +328,7 @@ public class MapGenerator : MonoBehaviour
         return noiseMap;
     }
 
-    private float[,] generateNoiseMountains(Vector2 center, ref float maxLocalNoiseHeight, ref float minLocalNoiseHeight, int size)
+    private float[,] generateNoiseMountains(Vector2 center, ref float maxLocalNoiseHeight, ref float minLocalNoiseHeight, int size, NoiseData noiseData)
     {
         float[,] noiseMoutains = new float[size, size];
 
@@ -387,7 +390,7 @@ public class MapGenerator : MonoBehaviour
         return noiseMoutains;
     }
 
-    private float[,] generateNoiseLand(Vector2 center, ref float maxLocalNoiseHeight, ref float minLocalNoiseHeight, int size)
+    private float[,] generateNoiseLand(Vector2 center, ref float maxLocalNoiseHeight, ref float minLocalNoiseHeight, int size, NoiseData noiseData)
     {
         float[,] noiseLand = new float[size, size];
 
@@ -450,7 +453,7 @@ public class MapGenerator : MonoBehaviour
         return noiseLand;
     }
 
-    private float[,] generateNoiseDiff(Vector2 center, int size)
+    private float[,] generateNoiseDiff(Vector2 center, int size, NoiseData noiseData)
     {
         float[,] noiseDiff = new float[size, size];
 
@@ -473,7 +476,7 @@ public class MapGenerator : MonoBehaviour
         return noiseDiff;
     }
 
-    private float[,] generateLandAndMountains(Vector2 center, ref float maxLocalNoiseHeight, ref float minLocalNoiseHeight, int size)
+    private float[,] generateLandAndMountains(Vector2 center, ref float maxLocalNoiseHeight, ref float minLocalNoiseHeight, int size, NoiseData noiseData)
     {
         float[,] noiseMapResult = new float[size, size];
 
@@ -651,7 +654,7 @@ public class MapGenerator : MonoBehaviour
 
     MapData GenerateBigMapData(Vector2 center, Vector2 chunkCoord)
     {
-        float[,] noiseMap = GenerateNoiseMap(center, mapChunkSize +2);
+        float[,] noiseMap = GenerateNoiseMap(center, mapChunkSize +2, noiseDataDefault);
 
         for (int y = 0; y < mapChunkSize; y++)
         {
@@ -681,10 +684,15 @@ public class MapGenerator : MonoBehaviour
             terrainData.OnValuesUpdated -= OnValuesUpdated;
             terrainData.OnValuesUpdated += OnValuesUpdated;
         }
-        if (noiseData != null)
+        if (noiseDataDefault != null)
         {
-            noiseData.OnValuesUpdated -= OnValuesUpdated;
-            noiseData.OnValuesUpdated += OnValuesUpdated;
+            noiseDataDefault.OnValuesUpdated -= OnValuesUpdated;
+            noiseDataDefault.OnValuesUpdated += OnValuesUpdated;
+        }
+        if (noiseDataHugeMap != null)
+        {
+            noiseDataHugeMap.OnValuesUpdated -= OnValuesUpdated;
+            noiseDataHugeMap.OnValuesUpdated += OnValuesUpdated;
         }
         if (textureData != null)
         {

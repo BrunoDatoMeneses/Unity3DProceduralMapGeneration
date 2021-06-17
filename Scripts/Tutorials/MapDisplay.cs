@@ -123,7 +123,7 @@ public class MapDisplay : MonoBehaviour
 
                 hugeMapMeshes[i, j].AddComponent<MeshFilter>();
                 hugeMapMeshes[i, j].AddComponent<MeshRenderer>();
-                //hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material = matMaterial;
+                hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material = FindObjectOfType<MapGenerator>().terrainMaterial;
 
                 hugeMapMeshes[i, j].GetComponent<MeshFilter>().mesh = meshData.CreateMesh();
                 //hugeMapMeshes[i, j].GetComponent<MeshRenderer>().material.mainTexture = meshTexture;
@@ -131,8 +131,9 @@ public class MapDisplay : MonoBehaviour
                 hugeMapMeshes[i, j].AddComponent<MeshCollider>();
                 hugeMapMeshes[i, j].GetComponent<MeshCollider>().sharedMesh = hugeMapMeshes[i, j].GetComponent<MeshFilter>().mesh;
 
-                float offset = (subMapData.heightMap.GetLength(0) -3) * 10.0f;
-                hugeMapMeshes[i, j].transform.localScale = new Vector3(10.0f, 10.0f, 10.0f);
+                float offset = (subMapData.heightMap.GetLength(0) -3) * FindObjectOfType<MapGenerator>().terrainData.uniformScale;
+
+                hugeMapMeshes[i, j].transform.localScale = Vector3.one * FindObjectOfType<MapGenerator>().terrainData.uniformScale;
                 hugeMapMeshes[i, j].transform.position = new Vector3(i * offset, 0.0f, -j * offset);
             }
 
