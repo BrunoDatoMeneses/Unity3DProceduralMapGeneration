@@ -5,7 +5,7 @@ using System.Collections;
 public class NoiseData : UpdatableData
 {
 
-	public enum NoiseMode { Simple, Diff, Land, Mountains, LandAndMountains };
+	public enum NoiseMode { Simple, Diff, Land, Mountains, LandAndMountains, Hills , All};
 	public NoiseMode noiseMode;
 
 	public Noise.NormalizeMode normalizeMode;
@@ -25,6 +25,8 @@ public class NoiseData : UpdatableData
 
 	public int seed;
 	public Vector2 offset;
+	public float yOffset = 0.0f;
+	public float reduction = 1.0f;
 
 	public int worldScale = 500;
 

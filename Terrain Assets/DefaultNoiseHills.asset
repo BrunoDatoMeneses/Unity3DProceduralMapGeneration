@@ -10,17 +10,17 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: bb6fe2c8075b7ba48a2dacbf5ce9f203, type: 3}
-  m_Name: DefaultNoise
+  m_Name: DefaultNoiseHills
   m_EditorClassIdentifier: 
   autoUpdate: 0
   noiseMode: 3
   normalizeMode: 0
-  noiseScale: 1000
+  noiseScale: 50
   octaves: 6
-  persistance: 0.471
-  lacunarity: 2
+  persistance: 0.5
+  lacunarity: 1
   seed: 0
   offset: {x: 0, y: 0}
-  yOffset: 0
-  reduction: 1
+  yOffset: 0.1
+  reduction: 0.1
   worldScale: 200

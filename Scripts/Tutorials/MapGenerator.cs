@@ -18,8 +18,12 @@ public class MapGenerator : MonoBehaviour
     public DrawValue drawvalue;
 
 
+    public NoiseData noiseDataSingleHills;
+    public NoiseData noiseDataSingleMountains;
+
     public TerrainData terrainData;
     public NoiseData noiseDataDefault;
+
     public TextureData textureData;
 
     public TerrainData terrainDataHugeMap;
@@ -311,11 +315,20 @@ public class MapGenerator : MonoBehaviour
 
         else if (noiseData.noiseMode == NoiseMode.Mountains)
         {
-            noiseMap = generateNoiseMountains(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size, noiseData);
+            noiseMap = generateNoiseMountains(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size, noiseDataSingleMountains);
         }
         else if (noiseData.noiseMode == NoiseMode.LandAndMountains)
         {
             noiseMap = generateLandAndMountains(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size, noiseData);
+        }
+        else if (noiseData.noiseMode == NoiseMode.Hills)
+        {
+            noiseMap = generateNoiseHills(center, size, noiseDataSingleHills);
+        }
+        else if (noiseData.noiseMode == NoiseMode.All)
+        {
+            float[,] noiseMapHills = generateNoiseHills(center, size, noiseDataSingleHills);
+            noiseMap = noiseMapHills;
         }
 
         if (terrainData.useErosion)
@@ -650,6 +663,56 @@ public class MapGenerator : MonoBehaviour
         }
 
         return noiseMapResult;
+    }
+
+    private float[,] generateNoiseHills(Vector2 center, int size, NoiseData noiseData)
+    {
+        float[,] noiseDiff = new float[size, size];
+
+        float maxLocalNoiseHeight = float.MinValue;
+        float minLocalNoiseHeight = float.MaxValue;
+
+        float[,] noiseMap1 = Noise.GenerateNoiseMap(size, size, noiseData.seed, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        float[,] noiseMap2 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 1, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+                float noiseHeight = Math.Abs(noiseMap1[x, y] - noiseMap2[x, y]);
+                //float noiseHeight = noiseMap1[x, y];
+                noiseDiff[x, y] = noiseHeight;
+
+                if (noiseHeight > maxLocalNoiseHeight)
+                {
+                    maxLocalNoiseHeight = noiseHeight;
+                }
+                else if (noiseHeight < minLocalNoiseHeight)
+                {
+                    minLocalNoiseHeight = noiseHeight;
+                }
+            }
+        }
+
+        for (int y = 0; y < size; y++)
+        {
+            for (int x = 0; x < size; x++)
+            {
+
+
+                if (noiseData.normalizeMode == Noise.NormalizeMode.Global)
+                {
+                    noiseDiff[x, y] = Mathf.InverseLerp(0, maxPossibleHeightForLand, noiseDiff[x, y]);
+                }
+                else if(noiseData.normalizeMode == Noise.NormalizeMode.Local)
+                {
+                    noiseDiff[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseDiff[x, y])* noiseData.reduction + noiseData.yOffset;
+                    //noiseDiff[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseDiff[x, y]);
+                }
+            }
+        }
+
+
+        return noiseDiff;
     }
 
     MapData GenerateBigMapData(Vector2 center, Vector2 chunkCoord)
