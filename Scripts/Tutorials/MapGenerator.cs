@@ -4,6 +4,7 @@ using UnityEngine;
 using System;
 using System.Threading;
 using static NoiseData;
+using static TerrainData;
 
 public class MapGenerator : MonoBehaviour
 {
@@ -17,7 +18,7 @@ public class MapGenerator : MonoBehaviour
     public enum DrawValue { HeightMap, Gradient, Water, Sediment};
     public DrawValue drawvalue;
 
-
+    public NoiseData noiseDataFalloff;
     public NoiseData noiseDataSingleHills;
     public NoiseData noiseDataSingleMountains;
 
@@ -107,14 +108,18 @@ public class MapGenerator : MonoBehaviour
              
             hugeMapSize = (chunkSizeMax-3) * nbMapChunksBySide +4;
             terrainData.meshHeightMultiplier = hugeMapSize / 8.0f;
-            falloffugeMap = FalloffGenerator.GenerateFalloffMap(hugeMapSize);
+            float[,] noiseMapForFallOff = Noise.GenerateNoiseMap(hugeMapSize, hugeMapSize, noiseDataFalloff.seed, noiseDataFalloff.noiseScale, noiseDataFalloff.octaves, noiseDataFalloff.persistance, noiseDataFalloff.lacunarity, Vector2.zero + noiseDataFalloff.offset, noiseDataFalloff.normalizeMode, noiseDataFalloff.worldScale);
+
+            falloffugeMap = FalloffGenerator.GenerateFalloffMap(hugeMapSize, noiseMapForFallOff, terrainData.paramFalloffa, terrainData.paramFalloffb, terrainData.paramFalloffNoiseReduction);
             mapData = GenerateHugeMapData(Vector2.zero, hugeMapSize, noiseDataHugeMap);
             
         }
         else
         {
             terrainData.meshHeightMultiplier = mapChunkSize / 8.0f;
-            falloffMap = FalloffGenerator.GenerateFalloffMap(mapChunkSize + 2);
+            float[,] noiseMapForFallOff = Noise.GenerateNoiseMap(mapChunkSize + 2, mapChunkSize + 2, noiseDataFalloff.seed, noiseDataFalloff.noiseScale, noiseDataFalloff.octaves, noiseDataFalloff.persistance, noiseDataFalloff.lacunarity, Vector2.zero + noiseDataFalloff.offset, noiseDataFalloff.normalizeMode, noiseDataFalloff.worldScale);
+
+            falloffMap = FalloffGenerator.GenerateFalloffMap(mapChunkSize + 2, noiseMapForFallOff, terrainData.paramFalloffa, terrainData.paramFalloffb, terrainData.paramFalloffNoiseReduction);
             mapData = GenerateMapData(Vector2.zero, mapChunkSize +2, noiseDataDefault);
         }
 
@@ -304,28 +309,28 @@ public class MapGenerator : MonoBehaviour
         float minLocalNoiseHeight = float.MaxValue;
 
         
-        if(noiseData.noiseMode == NoiseMode.Diff)
+        if(terrainData.noiseMode == NoiseMode.Diff)
         {
             noiseMap = generateNoiseDiff(center, size, noiseData);
         }
-        else if (noiseData.noiseMode == NoiseMode.Land)
+        else if (terrainData.noiseMode == NoiseMode.Land)
         {
             noiseMap = generateNoiseLand(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size, noiseData);
         }
 
-        else if (noiseData.noiseMode == NoiseMode.Mountains)
+        else if (terrainData.noiseMode == NoiseMode.Mountains)
         {
             noiseMap = generateNoiseMountains(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size, noiseDataSingleMountains);
         }
-        else if (noiseData.noiseMode == NoiseMode.LandAndMountains)
+        else if (terrainData.noiseMode == NoiseMode.LandAndMountains)
         {
             noiseMap = generateLandAndMountains(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size, noiseData);
         }
-        else if (noiseData.noiseMode == NoiseMode.Hills)
+        else if (terrainData.noiseMode == NoiseMode.Hills)
         {
             noiseMap = generateNoiseHills(center, size, noiseDataSingleHills);
         }
-        else if (noiseData.noiseMode == NoiseMode.All)
+        else if (terrainData.noiseMode == NoiseMode.All)
         {
             float[,] noiseMapHills = generateNoiseHills(center, size, noiseDataSingleHills);
             noiseMap = noiseMapHills;
@@ -674,12 +679,17 @@ public class MapGenerator : MonoBehaviour
 
         float[,] noiseMap1 = Noise.GenerateNoiseMap(size, size, noiseData.seed, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
         float[,] noiseMap2 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 1, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        float[,] noiseMap3 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 2, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        float[,] noiseMap4 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 3, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+
+
         for (int y = 0; y < size; y++)
         {
             for (int x = 0; x < size; x++)
             {
-                float noiseHeight = Math.Abs(noiseMap1[x, y] - noiseMap2[x, y]);
-                //float noiseHeight = noiseMap1[x, y];
+                float noiseHeight1 = Math.Abs(noiseMap1[x, y] - noiseMap2[x, y]);
+                float noiseHeight2 = Math.Abs(noiseMap3[x, y] - noiseMap4[x, y]);
+                float noiseHeight = noiseHeight1 + noiseHeight2;
                 noiseDiff[x, y] = noiseHeight;
 
                 if (noiseHeight > maxLocalNoiseHeight)
@@ -706,6 +716,7 @@ public class MapGenerator : MonoBehaviour
                 else if(noiseData.normalizeMode == Noise.NormalizeMode.Local)
                 {
                     noiseDiff[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseDiff[x, y])* noiseData.reduction + noiseData.yOffset;
+                    //noiseDiff[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseDiff[x, y]) * noiseData.reduction;
                     //noiseDiff[x, y] = Mathf.InverseLerp(minLocalNoiseHeight, maxLocalNoiseHeight, noiseDiff[x, y]);
                 }
             }

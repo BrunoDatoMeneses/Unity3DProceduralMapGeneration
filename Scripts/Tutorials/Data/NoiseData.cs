@@ -5,8 +5,7 @@ using System.Collections;
 public class NoiseData : UpdatableData
 {
 
-	public enum NoiseMode { Simple, Diff, Land, Mountains, LandAndMountains, Hills , All};
-	public NoiseMode noiseMode;
+	
 
 	public Noise.NormalizeMode normalizeMode;
 

@@ -13,8 +13,12 @@ MonoBehaviour:
   m_Name: DefaultTerrain
   m_EditorClassIdentifier: 
   autoUpdate: 0
-  uniformScale: 10
-  useFalloff: 0
+  noiseMode: 5
+  uniformScale: 100
+  useFalloff: 1
+  paramFalloffa: 2.78
+  paramFalloffb: 1.04
+  paramFalloffNoiseReduction: 0.1
   useErosion: 0
   erosionIterations: 39
   useFlatShading: 0
