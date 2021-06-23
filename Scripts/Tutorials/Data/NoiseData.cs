@@ -29,6 +29,8 @@ public class NoiseData : UpdatableData
 
 	public int worldScale = 500;
 
+	public int mountainNoiseDivider = 6;
+
 	protected override void OnValidate()
 	{
 		if (lacunarity < 1)

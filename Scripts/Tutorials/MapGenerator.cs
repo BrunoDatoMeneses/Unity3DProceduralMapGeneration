@@ -45,7 +45,7 @@ public class MapGenerator : MonoBehaviour
     public int nbMapChunksBySide;
     [Range(0,6)]
     public int editorPreviewLOD;
-    public int mountainNoiseDivider;
+    
 
     [Range(0, 1)]
     public float waterLevel;
@@ -308,8 +308,12 @@ public class MapGenerator : MonoBehaviour
         float maxLocalNoiseHeight = float.MinValue;
         float minLocalNoiseHeight = float.MaxValue;
 
-        
-        if(terrainData.noiseMode == NoiseMode.Diff)
+
+        if (terrainData.noiseMode == NoiseMode.RiverNetwork)
+        {
+            noiseMap = FindObjectOfType<RiverNetwork>().GenerateRiverNetwork(center, ref maxLocalNoiseHeight, ref minLocalNoiseHeight, size, noiseDataSingleMountains, noiseDataSingleHills, noiseDataDefault);
+        }
+        else if(terrainData.noiseMode == NoiseMode.Diff)
         {
             noiseMap = generateNoiseDiff(center, size, noiseData);
         }
@@ -346,19 +350,19 @@ public class MapGenerator : MonoBehaviour
         return noiseMap;
     }
 
-    private float[,] generateNoiseMountains(Vector2 center, ref float maxLocalNoiseHeight, ref float minLocalNoiseHeight, int size, NoiseData noiseData)
+    public float[,] generateNoiseMountains(Vector2 center, ref float maxLocalNoiseHeight, ref float minLocalNoiseHeight, int size, NoiseData noiseData)
     {
         float[,] noiseMoutains = new float[size, size];
 
-        float[,] noiseMap1 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 4, noiseData.noiseScale / mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
-        float[,] noiseMap2 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 5, noiseData.noiseScale / mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
-        float[,] noiseMap3 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 6, noiseData.noiseScale / mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
-        float[,] noiseMap4 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 7, noiseData.noiseScale / mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        float[,] noiseMap1 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 4, noiseData.noiseScale / noiseData.mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        float[,] noiseMap2 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 5, noiseData.noiseScale / noiseData.mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        float[,] noiseMap3 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 6, noiseData.noiseScale / noiseData.mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        float[,] noiseMap4 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 7, noiseData.noiseScale / noiseData.mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
 
-        float[,] noiseMap5 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 4, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
-        float[,] noiseMap6 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 5, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
-        float[,] noiseMap7 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 6, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
-        float[,] noiseMap8 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 7, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        //float[,] noiseMap5 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 4, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        //float[,] noiseMap6 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 5, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        //float[,] noiseMap7 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 6, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        //float[,] noiseMap8 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 7, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
 
         for (int y = 0; y < size; y++)
         {
@@ -366,8 +370,8 @@ public class MapGenerator : MonoBehaviour
             {
                 float diff1 = Math.Abs(noiseMap1[x, y] - noiseMap2[x, y]);
                 float diff2 = Math.Abs(noiseMap3[x, y] - noiseMap4[x, y]);
-                float diff3 = (noiseMap5[x, y] - noiseMap6[x, y]);
-                float diff4 = (noiseMap7[x, y] - noiseMap8[x, y]);
+                //float diff3 = (noiseMap5[x, y] - noiseMap6[x, y]);
+                //float diff4 = (noiseMap7[x, y] - noiseMap8[x, y]);
                 float noiseHeight = Math.Abs(diff1 + diff2);
 
                 if (noiseHeight > maxLocalNoiseHeight)
@@ -471,7 +475,7 @@ public class MapGenerator : MonoBehaviour
         return noiseLand;
     }
 
-    private float[,] generateNoiseDiff(Vector2 center, int size, NoiseData noiseData)
+    public float[,] generateNoiseDiff(Vector2 center, int size, NoiseData noiseData)
     {
         float[,] noiseDiff = new float[size, size];
 
@@ -503,10 +507,10 @@ public class MapGenerator : MonoBehaviour
         float[,] noiseMap3 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 2, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
         float[,] noiseMap4 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 3, noiseData.noiseScale, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
 
-        float[,] noiseMap5 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 4, noiseData.noiseScale / mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
-        float[,] noiseMap6 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 5, noiseData.noiseScale / mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
-        float[,] noiseMap7 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 6, noiseData.noiseScale / mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
-        float[,] noiseMap8 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 7, noiseData.noiseScale / mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        float[,] noiseMap5 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 4, noiseData.noiseScale / noiseData.mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        float[,] noiseMap6 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 5, noiseData.noiseScale / noiseData.mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        float[,] noiseMap7 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 6, noiseData.noiseScale / noiseData.mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
+        float[,] noiseMap8 = Noise.GenerateNoiseMap(size, size, noiseData.seed + 7, noiseData.noiseScale / noiseData.mountainNoiseDivider, noiseData.octaves, noiseData.persistance, noiseData.lacunarity, center + noiseData.offset, noiseData.normalizeMode, noiseData.worldScale);
 
         float[,] landNoiseMap = new float[size, size];
         float[,] moutainsNoiseMap = new float[size, size];
@@ -670,7 +674,7 @@ public class MapGenerator : MonoBehaviour
         return noiseMapResult;
     }
 
-    private float[,] generateNoiseHills(Vector2 center, int size, NoiseData noiseData)
+    public float[,] generateNoiseHills(Vector2 center, int size, NoiseData noiseData)
     {
         float[,] noiseDiff = new float[size, size];
 

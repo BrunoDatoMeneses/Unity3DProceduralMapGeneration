@@ -5,7 +5,7 @@ using System.Collections;
 public class TerrainData : UpdatableData
 {
 
-	public enum NoiseMode { Simple, Diff, Land, Mountains, LandAndMountains, Hills, All };
+	public enum NoiseMode { Simple, Diff, Land, Mountains, LandAndMountains, Hills, RiverNetwork, All };
 	public NoiseMode noiseMode;
 
 	public float uniformScale = 1.0f;

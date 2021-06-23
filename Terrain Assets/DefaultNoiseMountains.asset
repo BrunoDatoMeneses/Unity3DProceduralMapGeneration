@@ -13,14 +13,14 @@ MonoBehaviour:
   m_Name: DefaultNoiseMountains
   m_EditorClassIdentifier: 
   autoUpdate: 0
-  noiseMode: 3
   normalizeMode: 0
-  noiseScale: 400
+  noiseScale: 600
   octaves: 6
   persistance: 0.5
-  lacunarity: 1.5
+  lacunarity: 2
   seed: 0
   offset: {x: 0, y: 0}
   yOffset: 0.1
   reduction: 0.1
   worldScale: 200
+  mountainNoiseDivider: 6
